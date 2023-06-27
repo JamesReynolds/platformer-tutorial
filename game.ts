@@ -201,7 +201,6 @@ export class Game {
         this.leftDown = true;
         break;
       case 38:
-        console.log(`Jump: ${this.player.onGround}`);
         if (this.player.onGround) {
           this.player.velocity.y = -12;
           this.player.onGround = false;

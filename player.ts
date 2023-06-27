@@ -37,10 +37,10 @@ export class Player {
     platforms: Platform[]
   ) {
     this.faceLeft = holdLeft;
-    if (holdLeft) {
+    if (holdLeft && this.velocity.x > -10) {
       this.velocity.x += -2;
     }
-    if (holdRight) {
+    if (holdRight && this.velocity.x < 10) {
       this.velocity.x += 2;
     }
     if (!holdLeft && !holdRight) {
@@ -56,9 +56,6 @@ export class Player {
     if (this.y !== canvas.height) {
       const platform = platforms.filter(this.checkPlatform.bind(this))[0];
       if (platform) {
-        if (!this.onGround) {
-          console.log('Landed');
-        }
         this.y = platform.y;
         this.onGround = true;
         this.velocity.y = 0;
@@ -90,7 +87,7 @@ export class Player {
 
   checkPlatform(p: Platform): boolean {
     return (
-      this.x > p.x && this.x < p.x + p.w && this.y > p.y && this.y < p.y + 20
+      this.x > p.x && this.x < p.x + p.w && this.y >= p.y && this.y < p.y + 20
     );
   }
 
