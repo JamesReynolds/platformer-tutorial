@@ -7,7 +7,7 @@ Very rough side-scrolling platform game I'm using as a workshop for children.
 - [ ] Consider a licence
 - [ ] Make game.ts the initial point of understanding
   - [ ] Encapsulate all mechanics in the player class
-  - [ ] Create a background class
+  - [x] Create a background class
 
 ## Lesson 0
 

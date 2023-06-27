@@ -5,7 +5,7 @@
  * 2. Make syllabus & clean up
  */
 import { Coin } from './coin';
-import { shades } from './img/shades.base64';
+import { Background } from './background';
 import { Platform } from './platform';
 import { Player } from './player';
 import { blockSize, Rectangle } from './utils';
@@ -14,14 +14,10 @@ export class Game {
   public gravity = 0.5;
   public platforms: Platform[] = [];
   public coins: Coin[] = [];
+  public background: Background;
   private ctx: CanvasRenderingContext2D;
   private leftDown = false;
   private rightDown = false;
-  private sprite: CanvasImageSource;
-  bloxX: number;
-  bloxY: number;
-  shadeX = 1;
-  shadeY = 2;
   private dirty: Rectangle[];
   constructor(
     private wrapper: HTMLDivElement,
@@ -29,14 +25,7 @@ export class Game {
     public display: HTMLPreElement,
     public player: Player
   ) {
-    this.bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
-    this.bloxY = parseInt((this.canvas.height / blockSize).toFixed(0), 10);
     this.ctx = this.canvas.getContext('2d');
-
-    const _sprite = new Image();
-    // _sprite.src = './img/sprite.png';
-    _sprite.src = shades;
-    _sprite.onload = () => (this.sprite = _sprite);
 
     this.start(
       Math.floor(Math.random() * 31) + 1,
@@ -54,14 +43,15 @@ export class Game {
       shadeX = (shadeY + 1) % 4;
     }
     console.log(shadeX, shadeY);
-    this.shadeX = shadeX;
-    this.shadeY = shadeY;
+    this.background = new Background(shadeX, shadeY);
+    const bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
+    const bloxY = parseInt((this.canvas.height / blockSize).toFixed(0), 10);
 
     for (let i = 0; i < blox; i++) {
       this.platforms.push(
         new Platform(
-          (Math.floor(Math.random() * this.bloxX) + 1) * blockSize,
-          (Math.floor(Math.random() * this.bloxY) + 1) * blockSize,
+          (Math.floor(Math.random() * bloxX) + 1) * blockSize,
+          (Math.floor(Math.random() * bloxY) + 1) * blockSize,
           (Math.floor(Math.random() * 6) + 1) * blockSize,
           blockSize,
           shadeY,
@@ -72,51 +62,12 @@ export class Game {
     for (let i = 0; i < coinz; i++) {
       this.coins.push(
         new Coin(
-          (Math.floor(Math.random() * this.bloxX) + 1) * blockSize,
-          (Math.floor(Math.random() * this.bloxY) + 1) * blockSize
+          (Math.floor(Math.random() * bloxX) + 1) * blockSize,
+          (Math.floor(Math.random() * bloxY) + 1) * blockSize
         )
       );
     }
     this.wrapper.scrollTo(0, 0);
-  }
-
-  drawBackground(area: Rectangle) {
-    if (!this.sprite) return;
-    for (
-      let i = Math.floor(area.x / blockSize);
-      i <= Math.ceil((area.x + area.w) / blockSize);
-      i++
-    ) {
-      for (
-        let j = Math.floor(area.y / blockSize);
-        j <= Math.ceil((area.y + area.h) / blockSize);
-        j++
-      ) {
-        this.ctx.drawImage(
-          this.sprite,
-          this.shadeX * 300,
-          this.shadeY * 300,
-          300,
-          300,
-          i * blockSize,
-          j * blockSize,
-          blockSize,
-          blockSize
-        );
-      }
-    }
-  }
-
-  drawPlatforms(ctx: CanvasRenderingContext2D, area: Rectangle) {
-    for (let pl of this.platforms) {
-      pl.draw(ctx, area);
-    }
-  }
-
-  drawCoins(ctx: CanvasRenderingContext2D, area: Rectangle) {
-    for (let c of this.coins) {
-      c.draw(ctx);
-    }
   }
 
   displayStats(innerhtml: string) {
@@ -154,13 +105,19 @@ export class Game {
     } else {
       this.player.velocity.y += this.gravity;
     }
+
+    let drawn = true;
     for (const region of this.dirty) {
-      this.drawBackground(region);
-      this.drawPlatforms(this.ctx, region);
-      this.drawCoins(this.ctx, region);
+      drawn = drawn && this.background.draw(this.ctx, region);
+      for (let pl of this.platforms) {
+        pl.draw(this.ctx, region);
+      }
+      for (let c of this.coins) {
+        c.draw(this.ctx);
+      }
     }
     this.player.draw(this.ctx);
-    if (this.sprite) {
+    if (drawn) {
       this.dirty = [
         { x: this.player.x, y: this.player.y, w: blockSize, h: blockSize },
       ];
