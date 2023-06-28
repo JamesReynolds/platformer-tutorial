@@ -5,7 +5,6 @@
  * 2. Make syllabus & clean up
  */
 import { Coin } from './coin';
-import { Background } from './background';
 import { Platform } from './platform';
 import { Player } from './player';
 import { blockSize, loadImageLocal, randomShade, Rectangle } from './utils';
@@ -15,7 +14,6 @@ export class Game {
 
   public platforms: Platform[] = [];
   public coins: Coin[] = [];
-  public background: Background;
   public player: Player;
 
   private ctx: CanvasRenderingContext2D;
@@ -36,13 +34,15 @@ export class Game {
   public async load() {
     const blox = Math.floor(Math.random() * 31) + 1;
     const coinz = Math.floor(Math.random() * 11) + 1;
-    const backgroundShade = randomShade();
-    const platformShade = randomShade(backgroundShade);
+    const platformShade = randomShade();
     const shades = await loadImageLocal('img/shades.png');
     const coin = await loadImageLocal('img/coin.png');
     const player = await loadImageLocal('img/player.png');
 
-    this.background = new Background(shades, backgroundShade);
+    this.canvas.style.backgroundColor = 'grey'; // `url('${shades.src}')`;
+    this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
+    this.canvas.style.backgroundSize = '300px 300px';
+
     this.player = new Player(player);
     const bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
     const bloxY = parseInt((this.canvas.height / blockSize).toFixed(0), 10);
@@ -102,7 +102,7 @@ export class Game {
     }
 
     for (const region of this.dirty) {
-      this.background.draw(this.ctx, region);
+      this.ctx.clearRect(region.x, region.y, region.w, region.h);
       for (let pl of this.platforms) {
         pl.draw(this.ctx, region);
       }
