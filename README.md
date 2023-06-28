@@ -9,7 +9,7 @@ Very rough side-scrolling platform game I'm using as a workshop for children.
   - [ ] Encapsulate all mechanics in the player class
   - [x] Create a background class
 - [x] Get working using WebPack
-- [ ] Add actual images to the image folder
+- [x] Add actual images to the image folder
 - [ ] Create a background using an image under the canvas instead of using a background class
 
 ## Lesson 0
