@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
-    "target": "esnext"
+    "moduleResolution": "nodenext",
+    "module": "esnext",
+    "target": "esnext",
+    "outDir": "dist"
   }
 }

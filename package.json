@@ -2,7 +2,14 @@
   "name": "typescript",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "build": "tsc && mv dist/build.js dist/build.mjs && node dist/build.mjs"
+  },
   "dependencies": {
-    "rxjs": "latest"
+    "rxjs": "latest",
+    "typescript": "^5.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.3.2"
   }
 }
