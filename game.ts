@@ -32,21 +32,20 @@ export class Game {
   }
 
   public async load() {
-    const blox = Math.floor(Math.random() * 31) + 1;
-    const coinz = Math.floor(Math.random() * 11) + 1;
     const platformShade = randomShade();
     const shades = await loadImageLocal('img/shades.png');
     const coin = await loadImageLocal('img/coin.png');
     const player = await loadImageLocal('img/player.png');
+    const background = await loadImageLocal('img/background.jpg');
 
-    this.canvas.style.backgroundColor = 'grey'; // `url('${shades.src}')`;
+    this.canvas.style.backgroundImage = `url('${background.src}')`;
     this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
-    this.canvas.style.backgroundSize = '300px 300px';
 
     this.player = new Player(player);
     const bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
     const bloxY = parseInt((this.canvas.height / blockSize).toFixed(0), 10);
 
+    const blox = Math.floor(Math.random() * 31) + 1;
     for (let i = 0; i < blox; i++) {
       const platform = new Platform(
         (Math.floor(Math.random() * bloxX) + 1) * blockSize,
@@ -58,6 +57,8 @@ export class Game {
       );
       this.platforms.push(platform);
     }
+
+    const coinz = Math.floor(Math.random() * 11) + 1;
     for (let i = 0; i < coinz; i++) {
       this.coins.push(
         new Coin(
@@ -78,6 +79,12 @@ export class Game {
       h: blockSize,
     });
     this.player.run(this.leftDown, this.rightDown, this.canvas, this.platforms);
+    if (this.player.onGround) {
+      this.player.velocity.x *= 0.8;
+    } else {
+      this.player.velocity.y += this.gravity;
+    }
+
     if (this.leftDown || this.rightDown) {
       const displayX = this.player.x - this.wrapper.clientWidth / 2;
       this.wrapper.scrollTo(displayX, 0);
@@ -93,12 +100,6 @@ export class Game {
       if (this.player.checkCoin(this.coins[i])) {
         this.coins.splice(i, 1);
       }
-    }
-
-    if (this.player.onGround) {
-      this.player.velocity.x *= 0.8;
-    } else {
-      this.player.velocity.y += this.gravity;
     }
 
     for (const region of this.dirty) {

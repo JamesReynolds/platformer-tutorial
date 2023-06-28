@@ -14,7 +14,7 @@ async function* paths(root: string): AsyncGenerator<string> {
 }
 
 async function copyAssets(root: string, target: string, avoid: string[]) {
-    const types = ['.png', '.html'];
+    const types = ['.png', '.html', '.jpg'];
     avoid.push(target);
     for await (const from of paths(root)) {
         const to = path.join(target, path.relative(root, from));
