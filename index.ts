@@ -1,5 +1,4 @@
 import { Game } from './game';
-import { Player } from './player';
 import { blockSize } from './utils';
 
 const height = innerHeight - 150;
@@ -14,13 +13,13 @@ const canvas = document.querySelector('canvas');
 canvas.height = bloxX * blockSize;
 canvas.width = bloxY * blockSize * 10;
 
-const game = new Game(wrapper, canvas, display, new Player());
+const game = new Game(wrapper, canvas, display);
 
 const update = () => {
   game.tick();
 };
 const keyUp = (evt) => {
-  game.keyUp(evt.keyCode);
+  game.keyUp(evt.code);
 };
 const keyDown = (evt) => {
   if (
@@ -30,9 +29,10 @@ const keyDown = (evt) => {
   ) {
     evt.preventDefault();
   }
-  game.keyDown(evt.keyCode);
+  game.keyDown(evt.code);
 };
-
-setInterval(update, 1000 / 60);
-document.addEventListener('keydown', keyDown);
-document.addEventListener('keyup', keyUp);
+game.load().then(_ => {
+  setInterval(update, 1000 / 60);
+  document.addEventListener('keydown', keyDown);
+  document.addEventListener('keyup', keyUp);
+});

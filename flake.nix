@@ -13,6 +13,7 @@
           buildInputs = with pkgs; [
             nodejs
             vscode
+            python3
           ];
           shellHook = ''
             export PATH=$(pwd)/node_modules/.bin/:$PATH

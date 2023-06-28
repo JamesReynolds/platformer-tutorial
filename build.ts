@@ -33,7 +33,7 @@ async function fixImports(root: string) {
         if (from.endsWith('js')) {
             console.log(`Fixing: ${from}`);
             const data = await fs.readFile(from);
-            const fixed = data.toString().replace(/import\s+(.*)\sfrom\s+['"](.*)['"];/g, "import $1 from '$2.js';");
+            const fixed = data.toString().replace(/import\s+(.*)\sfrom\s+['"]\.(\S*)(.js)?['"];/g, "import $1 from '$2.js';");
             await fs.writeFile(from, fixed);
         }
     }

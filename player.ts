@@ -1,5 +1,4 @@
 import { Coin } from './coin';
-import { player } from './img/player.base64';
 import { Platform } from './platform';
 import { blockSize } from './utils';
 
@@ -11,7 +10,6 @@ export class Player {
     x: 0,
     y: 0,
   };
-  sprite: CanvasImageSource;
   center: {
     x: number;
     y: number;
@@ -20,14 +18,12 @@ export class Player {
     y: blockSize / 2,
   };
   constructor(
+    private sprite: CanvasImageSource,
     public x: number = 0,
     public y: number = 0,
     public w: number = 36.4,
     public h: number = blockSize
   ) {
-    const _sprite = new Image();
-    _sprite.src = player;
-    _sprite.onload = () => (this.sprite = _sprite);
   }
 
   run(
@@ -92,7 +88,6 @@ export class Player {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    if (!this.sprite) return;
     const direction = this.faceLeft ? 300 : 0;
     ctx.drawImage(
       this.sprite,
@@ -105,10 +100,6 @@ export class Player {
       this.w,
       this.h
     );
-  }
-  draw2(ctx: CanvasRenderingContext2D) {
-    ctx.font = '30px Arial';
-    ctx.fillText('🐄', this.x, this.y);
   }
   collectCoin(c: Coin) {
     this.coin = c;

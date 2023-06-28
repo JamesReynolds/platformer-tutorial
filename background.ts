@@ -1,18 +1,9 @@
-import { blockSize, Rectangle } from './utils';
+import { blockSize, loadImageLocal, Rectangle, Shade } from './utils';
 
 export class Background {
-  private sprite: CanvasImageSource;
-  constructor(private shadeX: number, private shadeY: number) {
-    const _sprite = new Image();
-    _sprite.src =
-      'https://raw.githubusercontent.com/JamesReynolds/platformer-tutorial/main/img/shades.png';
-    _sprite.onload = () => (this.sprite = _sprite);
-  }
+  constructor(private sprite: CanvasImageSource, private shade: Shade) {}
 
   draw(ctx: CanvasRenderingContext2D, area: Rectangle) {
-    if (!this.sprite) {
-      return false;
-    }
     for (
       let i = Math.floor(area.x / blockSize);
       i <= Math.ceil((area.x + area.w) / blockSize);
@@ -25,8 +16,8 @@ export class Background {
       ) {
         ctx.drawImage(
           this.sprite,
-          this.shadeX * 300,
-          this.shadeY * 300,
+          this.shade.x * 300,
+          this.shade.y * 300,
           300,
           300,
           i * blockSize,
@@ -36,6 +27,5 @@ export class Background {
         );
       }
     }
-    return true;
   }
 }
