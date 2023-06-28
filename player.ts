@@ -3,19 +3,11 @@ import { Platform } from './platform';
 import { blockSize } from './utils';
 
 export class Player {
-  coin: Coin;
   public onGround = false;
   faceLeft = false;
   public velocity = {
     x: 0,
     y: 0,
-  };
-  center: {
-    x: number;
-    y: number;
-  } = {
-    x: blockSize / 2,
-    y: blockSize / 2,
   };
   constructor(
     private sprite: CanvasImageSource,
@@ -23,8 +15,7 @@ export class Player {
     public y: number = 0,
     public w: number = 36.4,
     public h: number = blockSize
-  ) {
-  }
+  ) {}
 
   run(
     holdLeft: boolean,
@@ -44,9 +35,6 @@ export class Player {
     }
     this.x += this.velocity.x;
     this.y += this.velocity.y;
-
-    this.center.x = this.x + this.w / 2;
-    this.center.y = this.y - this.h / 2;
 
     this.stayOnCanvas(canvas);
     if (this.y !== canvas.height) {
@@ -101,14 +89,15 @@ export class Player {
       this.h
     );
   }
-  collectCoin(c: Coin) {
-    this.coin = c;
+  checkCoin(c: Coin) {
+    const centerX = this.x + this.w / 2;
+    const centerY = this.y - this.h / 2;
 
     return (
-      c.center.x - 15 < this.center.x &&
-      this.center.x < c.center.x + 15 &&
-      c.center.y - 15 < this.center.y &&
-      this.center.y < c.center.y + 15
+      c.center.x - 15 < centerX &&
+      centerX < c.center.x + 15 &&
+      c.center.y - 15 < centerY &&
+      centerY < c.center.y + 15
     );
   }
 }

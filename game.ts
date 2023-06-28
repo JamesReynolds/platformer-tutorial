@@ -41,7 +41,7 @@ export class Game {
     const shades = await loadImageLocal('img/shades.png');
     const coin = await loadImageLocal('img/coin.png');
     const player = await loadImageLocal('img/player.png');
-    
+
     this.background = new Background(shades, backgroundShade);
     this.player = new Player(player);
     const bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
@@ -49,13 +49,13 @@ export class Game {
 
     for (let i = 0; i < blox; i++) {
       const platform = new Platform(
-          (Math.floor(Math.random() * bloxX) + 1) * blockSize,
-          (Math.floor(Math.random() * bloxY) + 1) * blockSize,
-          (Math.floor(Math.random() * 6) + 1) * blockSize,
-          blockSize,
-          shades,
-          platformShade
-        );
+        (Math.floor(Math.random() * bloxX) + 1) * blockSize,
+        (Math.floor(Math.random() * bloxY) + 1) * blockSize,
+        (Math.floor(Math.random() * 6) + 1) * blockSize,
+        blockSize,
+        shades,
+        platformShade
+      );
       this.platforms.push(platform);
     }
     for (let i = 0; i < coinz; i++) {
@@ -90,8 +90,7 @@ export class Game {
     }
 
     for (let i = 0; i < this.coins.length; i++) {
-      const c = this.coins[i];
-      if (this.player.collectCoin(c)) {
+      if (this.player.checkCoin(this.coins[i])) {
         this.coins.splice(i, 1);
       }
     }
