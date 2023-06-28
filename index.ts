@@ -3,21 +3,17 @@ import { blockSize } from './utils';
 
 const height = innerHeight - 150;
 const width = innerWidth - 5;
-const bloxY = parseInt((width / blockSize).toFixed(0), 10);
-const bloxX = parseInt((height / blockSize).toFixed(0), 10);
 console.log(`Sizes: ${width}x${height}`);
 
 const wrapper = document.querySelector('#wrapper') as HTMLDivElement;
 const display = document.querySelector('pre');
 const canvas = document.querySelector('canvas');
-canvas.height = bloxX * blockSize;
-canvas.width = bloxY * blockSize * 10;
+const bloxY = parseInt((height / blockSize).toFixed(0), 10);
+canvas.height = bloxY * blockSize;
+canvas.width = 100 * blockSize;
 
 const game = new Game(wrapper, canvas, display);
 
-const update = () => {
-  game.tick();
-};
 const keyUp = (evt) => {
   game.keyUp(evt.code);
 };
@@ -31,8 +27,13 @@ const keyDown = (evt) => {
   }
   game.keyDown(evt.code);
 };
+
+function ticker(timeStamp) {
+    game.tick();
+    window.requestAnimationFrame(ticker);
+}
 game.load().then(_ => {
-  setInterval(update, 1000 / 60);
-  document.addEventListener('keydown', keyDown);
-  document.addEventListener('keyup', keyUp);
+    window.requestAnimationFrame(ticker);
+    document.addEventListener('keydown', keyDown);
+    document.addEventListener('keyup', keyUp);
 });
