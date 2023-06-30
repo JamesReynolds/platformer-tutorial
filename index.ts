@@ -6,13 +6,12 @@ const width = innerWidth - 5;
 console.log(`Sizes: ${width}x${height}`);
 
 const wrapper = document.querySelector('#wrapper') as HTMLDivElement;
-const display = document.querySelector('pre');
 const canvas = document.querySelector('canvas');
 const bloxY = parseInt((height / blockSize).toFixed(0), 10);
 canvas.height = bloxY * blockSize;
 canvas.width = 100 * blockSize;
 
-const game = new Game(wrapper, canvas, display);
+const game = new Game(wrapper, canvas);
 
 const keyUp = (evt) => {
   game.keyUp(evt.code);

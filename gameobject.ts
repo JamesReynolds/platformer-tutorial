@@ -20,7 +20,7 @@ function intersect(lhs: Rectangle, rhs: Rectangle) {
  * at a location and possible cropped
  */
 export class GameObject {
-    private crop: Rectangle;
+    protected crop: Rectangle;
     constructor(
         public boundingBox: Rectangle,
         private sprite: HTMLImageElement,
@@ -37,7 +37,10 @@ export class GameObject {
         };
     }
 
-    public draw(ctx: CanvasRenderingContext2D, area: Rectangle) {
+    public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {
+        if (!area) {
+            area = this.boundingBox;
+        }
         const cropX = Math.floor(Math.max(0, area.x - this.boundingBox.x) / this.scale) % this.crop.w;
         const cropY = Math.floor(Math.max(0, area.y - this.boundingBox.y) / this.scale) % this.crop.h;
         area = intersect(this.boundingBox, area);

@@ -13,9 +13,8 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-export type Shade = { x: number; y: number };
-export function randomShade(shade?: Shade) {
-  return { x: Math.floor(Math.random() * 4), y: Math.floor(Math.random() * 4) };
+export function randomShade(): Rectangle {
+  return { x: Math.floor(Math.random() * 4) * 300, y: Math.floor(Math.random() * 4) * 300, w: 300, h: 300 };
 }
 
 export async function loadImageLocal(url: string) {
@@ -25,4 +24,8 @@ export async function loadImageLocal(url: string) {
     console.log(`Failed to load ${url}, trying ${ROOT}${url}`);
     return await loadImage(ROOT + url);
   }
+}
+
+export function randomBetween(from: number, to: number) {
+  return Math.floor(from + Math.random() * (to - from));
 }

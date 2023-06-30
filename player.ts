@@ -1,103 +1,138 @@
+/**
+ * The player is a more complex GameObject that
+ * needs to `move` and check whether they bump
+ * into things.
+ */
 import { GameObject } from './gameobject';
 import { blockSize } from './utils';
 
-export class Player {
+export class Player extends GameObject {
+  // How fast the player falls
+  public gravity = 0.5;
+  // Whether the player is on the ground
   public onGround = false;
-  faceLeft = false;
+  // The speed and direction the player is moving in
   public velocity = {
     x: 0,
     y: 0,
   };
+  
+  /**
+   * Make a new player
+   * @param sprite The picture of the player
+   */
   constructor(
-    private sprite: CanvasImageSource,
-    public x: number = 0,
-    public y: number = 0,
-    public w: number = 36.4,
-    public h: number = blockSize
-  ) {}
+    sprite: HTMLImageElement
+  ) {
+    super(
+      {x: 0, y: 0, w: 36.4, h: blockSize},
+      sprite,
+      {x: 0, y: 0, w: 182, h: 300},
+      1 / 5);
+  }
 
-  run(
-    holdLeft: boolean,
-    holdRight: boolean,
+  /**
+   * Make the player move
+   * @param keysHeld The keys being pressed
+   * @param canvas The canvas that the player is on
+   * @param platforms The platforms the player can stand on
+   */
+  move(
+    keysHeld: Set<string>,
     canvas: HTMLCanvasElement,
     platforms: GameObject[]
   ) {
-    this.faceLeft = holdLeft;
-    if (holdLeft && this.velocity.x > -10) {
-      this.velocity.x += -2;
-    }
-    if (holdRight && this.velocity.x < 10) {
+    if (keysHeld.has("ArrowLeft")) {
+      this.velocity.x -= 2;
+      if (this.velocity.x < -10) {
+        this.velocity.x = -10;
+      }
+      this.crop = { ...this.crop, y: 300};
+    } else if (keysHeld.has("ArrowRight")) {
       this.velocity.x += 2;
-    }
-    if (!holdLeft && !holdRight) {
+      if (this.velocity.x > 10) {
+        this.velocity.x = 10;
+      }
+      this.crop = { ...this.crop, y: 0};
+    } else {
       this.velocity.x = 0;
     }
-    this.x += this.velocity.x;
-    this.y += this.velocity.y;
 
+    if (keysHeld.has("ArrowUp")) {
+      if (this.onGround) {
+        this.velocity.y = -12;
+        this.onGround = false;
+      }
+    } else {
+      if (this.velocity.y < -3) {
+        this.velocity.y = -3;
+      }
+    }
+
+    // Move the player
+    this.boundingBox.x += this.velocity.x;
+    this.boundingBox.y += this.velocity.y;
+
+    // Make the player step
+    if (this.velocity.x !== 0) {
+      this.crop.x = ((this.crop.x / this.crop.w + 1) % 6) * this.crop.w;
+    }
+
+    // Make sure they don't fall off the world!
     this.stayOnCanvas(canvas);
-    if (this.y !== canvas.height) {
+    if (this.boundingBox.y !== canvas.height - this.boundingBox.h) {
       const platform = platforms.filter(this.checkPlatform.bind(this))[0];
       if (platform) {
-        this.y = platform.boundingBox.y;
+        this.boundingBox.y = platform.boundingBox.y - this.boundingBox.h;
         this.onGround = true;
         this.velocity.y = 0;
       } else {
         this.onGround = false;
       }
     }
+
+    if (this.onGround) {
+      this.velocity.x *= 0.8;
+    } else {
+      this.velocity.y += this.gravity;
+    }
   }
 
   stayOnCanvas(canvas: HTMLCanvasElement) {
-    if (this.y > canvas.height) {
-      this.y = canvas.height;
-
+    if (this.boundingBox.y > canvas.height - this.boundingBox.h) {
+      this.boundingBox.y = canvas.height - this.boundingBox.h;
       this.onGround = true;
       this.velocity.y = 0;
     }
 
-    if (this.y < 20) {
-      this.y = 20;
+    if (this.boundingBox.y < 0) {
+      this.boundingBox.y = 0;
     }
-    if (this.x > canvas.width - 10) {
-      this.x = canvas.width - 10;
+    if (this.boundingBox.x > canvas.width - this.boundingBox.w) {
+      this.boundingBox.x = canvas.width - this.boundingBox.w;
     }
 
-    if (this.x < 0) {
-      this.x = 0;
+    if (this.boundingBox.x < 0) {
+      this.boundingBox.x = 0;
     }
   }
 
   checkPlatform(p: GameObject): boolean {
-    return (
-      this.x + this.w > p.boundingBox.x && this.x < p.boundingBox.x + p.boundingBox.w && this.y >= p.boundingBox.y && this.y < p.boundingBox.y + 20
-    );
+    return (this.boundingBox.x + this.boundingBox.w > p.boundingBox.x)
+        && (p.boundingBox.x + p.boundingBox.w > this.boundingBox.x)
+        && (this.boundingBox.y + this.boundingBox.h >= p.boundingBox.y)
+        && (p.boundingBox.y + 20 > this.boundingBox.y + this.boundingBox.h);
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
-    const direction = this.faceLeft ? 300 : 0;
-    ctx.drawImage(
-      this.sprite,
-      0,
-      direction,
-      182,
-      300,
-      this.x,
-      this.y - blockSize,
-      this.w,
-      this.h
-    );
-  }
   checkCoin(coin: GameObject) {
     const coinCentre = coin.centre();
-    const centreX = this.x + this.w / 2;
-    const centreY = this.y - this.h / 2;
+    const thisCentre = this.centre();
 
     return (
-      coinCentre.x - 15 < centreX &&
-      centreX < coinCentre.x + 15 &&
-      coinCentre.y - 15 < centreY &&
-      centreY < coinCentre.y + 15
+      coinCentre.x - 15 < thisCentre.x &&
+      thisCentre.x < coinCentre.x + 15 &&
+      coinCentre.y - 15 < thisCentre.y &&
+      thisCentre.y < coinCentre.y + 15
     );
   }
 }

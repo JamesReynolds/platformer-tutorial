@@ -1,143 +1,155 @@
+/**
+ * This file is responsible for loading up all of the parts of the game
+ * and calling each part as part of the "game loop": the function `tick`
+ * that is called every change.
+ */
 import { GameObject } from './gameobject';
 import { Player } from './player';
-import { blockSize, loadImageLocal, randomShade, Rectangle } from './utils';
+import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween } from './utils';
 
 export class Game {
-  public gravity = 0.5;
+  // The player!
+  private player: Player;
 
-  public platforms: GameObject[] = [];
-  public coins: GameObject[] = [];
-  public player: Player;
+  // Each platform they can stand on
+  private platforms: GameObject[] = [];
 
-  private ctx: CanvasRenderingContext2D;
-  private leftDown = false;
-  private rightDown = false;
-  private dirty: Rectangle[];
+  // Each coin they can collect
+  private coins: GameObject[] = [];
+
+  // What keys are we holding down (if any!)
+  private keysHeld = new Set<string>();
+
+  // The thing we need to draw with
+  private context: CanvasRenderingContext2D;
+  
   constructor(
+    // The frame looking into onto our canvas
     private wrapper: HTMLDivElement,
+    // Our canvas to paint our picture
     public canvas: HTMLCanvasElement,
-    public display: HTMLPreElement
   ) {
-    this.ctx = this.canvas.getContext('2d');
-    this.dirty = [
-      { x: 0, y: 0, w: this.canvas.width, h: this.canvas.height },
-    ];
+    this.context = this.canvas.getContext('2d');
   }
 
+  /**
+   * This is called when we load up the game
+   */
   public async load() {
-    const platformShade = randomShade();
+    // Load all the pictures (sprites)
     const shades = await loadImageLocal('img/shades.png');
     const coin = await loadImageLocal('img/coin.png');
     const player = await loadImageLocal('img/player.png');
     const background = await loadImageLocal('img/background.jpg');
 
+    // Set the background
     this.canvas.style.backgroundImage = `url('${background.src}')`;
     this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
 
+    // Make a player
     this.player = new Player(player);
 
-    const blox = 100;
-    for (let i = 0; i < blox; i++) {
+    // Make some platforms
+    for (let i = 0; i < 100; i++) {
       const platform = new GameObject(
         {
-          x: Math.floor(Math.random() * this.canvas.width),
-          y: Math.floor(Math.random() * this.canvas.height),
-          w: Math.floor(Math.random() * blockSize * 10),
-          h: Math.floor(Math.random() * blockSize * 2)
+          x: randomBetween(0, this.canvas.width),
+          y: randomBetween(0, this.canvas.height),
+          w: randomBetween(50, 600),
+          h: randomBetween(50, 150)
         },
         shades,
-        {x: platformShade.x * 300, y: platformShade.y * 300, w: 300, h: 300},
+        randomShade(),
         1 / 5);
       this.platforms.push(platform);
     }
 
-    const coinz = 50;
-    for (let i = 0; i < coinz; i++) {
+    // Make some coins
+    for (let i = 0; i < 50; i++) {
       this.coins.push(
         new GameObject(
           {
-            x: Math.floor(Math.random() * this.canvas.width),
-            y: Math.floor(Math.random() * this.canvas.height),
+            x: randomBetween(0, this.canvas.width - blockSize),
+            y: randomBetween(0, this.canvas.height - blockSize),
             w: blockSize,
             h: blockSize,
           },
           coin, undefined, 1 / 5));
     }
+
+    // Make sure we start on the left
     this.wrapper.scrollTo(0, 0);
+
+    // Draw everything
+    this.draw([{ x: 0, y: 0, w: this.canvas.width, h: this.canvas.height }]);
   }
 
+  /**
+   * This is called each time the screen needs to update
+   */
   tick() {
-    this.dirty.push({
-      x: this.player.x,
-      y: this.player.y - this.player.h,
-      w: this.player.w,
-      h: this.player.h,
-    });
-    this.player.run(this.leftDown, this.rightDown, this.canvas, this.platforms);
-    if (this.player.onGround) {
-      this.player.velocity.x *= 0.8;
-    } else {
-      this.player.velocity.y += this.gravity;
-    }
+    const dirty = [];
 
-    if (this.leftDown || this.rightDown) {
-      const displayX = this.player.x - this.wrapper.clientWidth / 2;
-      this.wrapper.scrollTo(displayX, 0);
-    }
+    // Mark where the player was as needing to be redrawn ("dirty")
+    dirty.push({...this.player.boundingBox});
+    
+    // The player moves
+    this.player.move(this.keysHeld, this.canvas, this.platforms);
+    
+    // Make sure the player is in the middle of the screen
+    const displayX = this.player.centre().x - this.wrapper.clientWidth / 2;
+    this.wrapper.scrollTo(displayX, 0);
 
+    // Check whether the player gets a coin
     for (let i = 0; i < this.coins.length; i++) {
       if (this.player.checkCoin(this.coins[i])) {
-        this.dirty.push(this.coins[i].boundingBox);
+        // Where the coin used to be needs to be redrawn
+        dirty.push(this.coins[i].boundingBox);
+
+        // Remove the coin
         this.coins.splice(i, 1);
       }
     }
 
-    for (let region of this.dirty) {
-      region = {x: Math.floor(region.x), y: Math.floor(region.y), w: Math.ceil(region.w), h: Math.ceil(region.h + 1)};
-      this.ctx.clearRect(region.x, region.y, region.w, region.h);
-      for (let pl of this.platforms) {
-        pl.draw(this.ctx, region);
-      }
-      for (let c of this.coins) {
-        c.draw(this.ctx, region);
-      }
-    }
-    this.player.draw(this.ctx);
-    this.dirty = [
-      { x: this.player.x, y: this.player.y - this.player.h, w: this.player.w, h: this.player.h },
-    ];
+    this.draw(dirty);
   }
 
-  keyUp(key: string) {
-    switch (key) {
-      case 'ArrowLeft':
-        this.leftDown = false;
-        break;
-      case 'ArrowUp':
-        if (this.player.velocity.y < -3) {
-          this.player.velocity.y = -3;
-        }
-        break;
-      case 'ArrowRight':
-        this.rightDown = false;
-        break;
-    }
-  }
-
+  /**
+   * This is called when you press a key down
+   * @param key Name of the key
+   */
   keyDown(key: string) {
-    switch (key) {
-      case 'ArrowLeft':
-        this.leftDown = true;
-        break;
-      case 'ArrowUp':
-        if (this.player.onGround) {
-          this.player.velocity.y = -12;
-          this.player.onGround = false;
-        }
-        break;
-      case 'ArrowRight':
-        this.rightDown = true;
-        break;
+    this.keysHeld.add(key);
+  }
+
+  /**
+   * This is called when you let go of a key
+   * @param key Name of the key
+   */
+  keyUp(key: string) {
+    this.keysHeld.delete(key);
+  }
+  
+  draw(dirty: Rectangle[]) {
+    // Redraw everything that is dirty
+    for (let region of dirty) {
+      // We need to round off the values
+      region = {x: Math.floor(region.x), y: Math.floor(region.y), w: Math.ceil(region.w), h: Math.ceil(region.h + 1)};
+
+      // Clear the what was there before
+      this.context.clearRect(region.x, region.y, region.w, region.h);
+
+      // Draw the platforms
+      for (let pl of this.platforms) {
+        pl.draw(this.context, region);
+      }
+
+      // Draw the coins
+      for (let c of this.coins) {
+        c.draw(this.context, region);
+      }
     }
+    // Draw the things that (may have) moved
+    this.player.draw(this.context);
   }
 }
