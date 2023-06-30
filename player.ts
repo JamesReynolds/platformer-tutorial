@@ -1,5 +1,4 @@
-import { Coin } from './coin';
-import { Platform } from './platform';
+import { GameObject } from './gameobject';
 import { blockSize } from './utils';
 
 export class Player {
@@ -21,7 +20,7 @@ export class Player {
     holdLeft: boolean,
     holdRight: boolean,
     canvas: HTMLCanvasElement,
-    platforms: Platform[]
+    platforms: GameObject[]
   ) {
     this.faceLeft = holdLeft;
     if (holdLeft && this.velocity.x > -10) {
@@ -40,7 +39,7 @@ export class Player {
     if (this.y !== canvas.height) {
       const platform = platforms.filter(this.checkPlatform.bind(this))[0];
       if (platform) {
-        this.y = platform.y;
+        this.y = platform.boundingBox.y;
         this.onGround = true;
         this.velocity.y = 0;
       } else {
@@ -69,9 +68,9 @@ export class Player {
     }
   }
 
-  checkPlatform(p: Platform): boolean {
+  checkPlatform(p: GameObject): boolean {
     return (
-      this.x > p.x && this.x < p.x + p.w && this.y >= p.y && this.y < p.y + 20
+      this.x + this.w > p.boundingBox.x && this.x < p.boundingBox.x + p.boundingBox.w && this.y >= p.boundingBox.y && this.y < p.boundingBox.y + 20
     );
   }
 
@@ -89,15 +88,16 @@ export class Player {
       this.h
     );
   }
-  checkCoin(c: Coin) {
-    const centerX = this.x + this.w / 2;
-    const centerY = this.y - this.h / 2;
+  checkCoin(coin: GameObject) {
+    const coinCentre = coin.centre();
+    const centreX = this.x + this.w / 2;
+    const centreY = this.y - this.h / 2;
 
     return (
-      c.center.x - 15 < centerX &&
-      centerX < c.center.x + 15 &&
-      c.center.y - 15 < centerY &&
-      centerY < c.center.y + 15
+      coinCentre.x - 15 < centreX &&
+      centreX < coinCentre.x + 15 &&
+      coinCentre.y - 15 < centreY &&
+      centreY < coinCentre.y + 15
     );
   }
 }

@@ -1,19 +1,12 @@
-/**
- * TODO:
- *
- * 1. Make sure platforms only draw within region
- * 2. Make syllabus & clean up
- */
-import { Coin } from './coin';
-import { Platform } from './platform';
+import { GameObject } from './gameobject';
 import { Player } from './player';
 import { blockSize, loadImageLocal, randomShade, Rectangle } from './utils';
 
 export class Game {
   public gravity = 0.5;
 
-  public platforms: Platform[] = [];
-  public coins: Coin[] = [];
+  public platforms: GameObject[] = [];
+  public coins: GameObject[] = [];
   public player: Player;
 
   private ctx: CanvasRenderingContext2D;
@@ -27,7 +20,7 @@ export class Game {
   ) {
     this.ctx = this.canvas.getContext('2d');
     this.dirty = [
-      { x: 0, y: 0, w: this.wrapper.clientWidth, h: this.canvas.height },
+      { x: 0, y: 0, w: this.canvas.width, h: this.canvas.height },
     ];
   }
 
@@ -42,31 +35,33 @@ export class Game {
     this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
 
     this.player = new Player(player);
-    const bloxX = parseInt((this.canvas.width / blockSize).toFixed(0), 10);
-    const bloxY = parseInt((this.canvas.height / blockSize).toFixed(0), 10);
 
-    const blox = Math.floor(Math.random() * 31) + 1;
+    const blox = 100;
     for (let i = 0; i < blox; i++) {
-      const platform = new Platform(
-        (Math.floor(Math.random() * bloxX) + 1) * blockSize,
-        (Math.floor(Math.random() * bloxY) + 1) * blockSize,
-        (Math.floor(Math.random() * 6) + 1) * blockSize,
-        blockSize,
+      const platform = new GameObject(
+        {
+          x: Math.floor(Math.random() * this.canvas.width),
+          y: Math.floor(Math.random() * this.canvas.height),
+          w: Math.floor(Math.random() * blockSize * 10),
+          h: Math.floor(Math.random() * blockSize * 2)
+        },
         shades,
-        platformShade
-      );
+        {x: platformShade.x * 300, y: platformShade.y * 300, w: 300, h: 300},
+        1 / 5);
       this.platforms.push(platform);
     }
 
-    const coinz = Math.floor(Math.random() * 11) + 1;
+    const coinz = 50;
     for (let i = 0; i < coinz; i++) {
       this.coins.push(
-        new Coin(
-          (Math.floor(Math.random() * bloxX) + 1) * blockSize,
-          (Math.floor(Math.random() * bloxY) + 1) * blockSize,
-          coin
-        )
-      );
+        new GameObject(
+          {
+            x: Math.floor(Math.random() * this.canvas.width),
+            y: Math.floor(Math.random() * this.canvas.height),
+            w: blockSize,
+            h: blockSize,
+          },
+          coin, undefined, 1 / 5));
     }
     this.wrapper.scrollTo(0, 0);
   }
@@ -74,9 +69,9 @@ export class Game {
   tick() {
     this.dirty.push({
       x: this.player.x,
-      y: this.player.y - blockSize,
-      w: blockSize,
-      h: blockSize,
+      y: this.player.y - this.player.h,
+      w: this.player.w,
+      h: this.player.h,
     });
     this.player.run(this.leftDown, this.rightDown, this.canvas, this.platforms);
     if (this.player.onGround) {
@@ -88,32 +83,28 @@ export class Game {
     if (this.leftDown || this.rightDown) {
       const displayX = this.player.x - this.wrapper.clientWidth / 2;
       this.wrapper.scrollTo(displayX, 0);
-      this.dirty.push({
-        x: this.leftDown ? displayX : displayX + this.wrapper.clientWidth,
-        y: 0,
-        w: blockSize,
-        h: this.canvas.height,
-      });
     }
 
     for (let i = 0; i < this.coins.length; i++) {
       if (this.player.checkCoin(this.coins[i])) {
+        this.dirty.push(this.coins[i].boundingBox);
         this.coins.splice(i, 1);
       }
     }
 
-    for (const region of this.dirty) {
+    for (let region of this.dirty) {
+      region = {x: Math.floor(region.x), y: Math.floor(region.y), w: Math.ceil(region.w), h: Math.ceil(region.h + 1)};
       this.ctx.clearRect(region.x, region.y, region.w, region.h);
       for (let pl of this.platforms) {
         pl.draw(this.ctx, region);
       }
       for (let c of this.coins) {
-        c.draw(this.ctx);
+        c.draw(this.ctx, region);
       }
     }
     this.player.draw(this.ctx);
     this.dirty = [
-      { x: this.player.x, y: this.player.y, w: blockSize, h: blockSize },
+      { x: this.player.x, y: this.player.y - this.player.h, w: this.player.w, h: this.player.h },
     ];
   }
 
