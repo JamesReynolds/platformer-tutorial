@@ -1,5 +1,6 @@
 export const blockSize = 60;
 export type Rectangle = { x: number; y: number; w: number; h: number };
+export type Vector = { x: number; y: number };
 
 const ROOT =
   'https://raw.githubusercontent.com/JamesReynolds/platformer-tutorial/main/';

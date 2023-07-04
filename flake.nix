@@ -14,6 +14,7 @@
             nodejs
             vscode
             python3
+            inotify-tools
           ];
           shellHook = ''
             export PATH=$(pwd)/node_modules/.bin/:$PATH

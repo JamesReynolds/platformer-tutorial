@@ -1,4 +1,4 @@
-import { Rectangle } from './utils';
+import { Rectangle, Vector } from './utils';
 
 /**
  * Return the "intersection" (overlap) of two rectangles
@@ -9,10 +9,26 @@ import { Rectangle } from './utils';
 function intersect(lhs: Rectangle, rhs: Rectangle) {
     const x = Math.max(lhs.x, rhs.x);
     const y = Math.max(lhs.y, rhs.y);
-    return {x, y, 
-        w: Math.max(0, Math.min(lhs.x + lhs.w, rhs.x + rhs.w) - x),
-        h: Math.max(0, Math.min(lhs.y + lhs.h, rhs.y + rhs.h) - y)
+    const result = {x, y, 
+        w: Math.min(lhs.x + lhs.w, rhs.x + rhs.w) - x,
+        h: Math.min(lhs.y + lhs.h, rhs.y + rhs.h) - y
+    };
+    if (result.w < 0 || result.h < 0) {
+        return undefined;
     }
+    return result;
+}
+
+/**
+ * Move a bounding box by the given vector
+ * @param box    The box to move
+ * @param vector The vector to move it by
+ * @returns The input box, shifted by the vector
+ */
+export function moveRectangle(box: Rectangle, vector: Vector) {
+    box.x += vector.x;
+    box.y += vector.y;
+    return box;
 }
 
 /**
@@ -37,6 +53,38 @@ export class GameObject {
         };
     }
 
+    /**
+     * Figure out whether we collided with another object and return
+     * opposite velocity to get us back outside the object if we did.
+     * 
+     * @param other The other gameobject we may have collided with
+     * @param velocity The velocity we're moving at
+     */
+    public checkCollision(other: GameObject, velocity: {x: number, y: number}) {
+        // The bit we're now overlapping with the object
+        const overlap = intersect(this.boundingBox, other.boundingBox);
+        if (!overlap) {
+            return undefined;
+        }
+
+        // A vector that will move us so we're no longer overlapping (back the way we came)
+        const out = {
+            x: -Math.min(Math.abs(velocity.x), overlap.w) * Math.sign(velocity.x),
+            y: -Math.min(Math.abs(velocity.y), overlap.h) * Math.sign(velocity.y)};
+        
+        // The edge we bumped into
+        const edge = intersect(moveRectangle({...overlap}, out), this.boundingBox);
+
+        if (edge.h < edge.w) {
+            // If we hit a horizontal edge, then we don't need to exit left or right
+            out.x = 0;
+        } else {
+            // If we hit a vertical edge, then we don't need to exit up or down
+            out.y = 0;
+        }
+        return out;
+    }
+
     public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {
         if (!area) {
             area = this.boundingBox;
@@ -44,7 +92,7 @@ export class GameObject {
         const cropX = Math.floor(Math.max(0, area.x - this.boundingBox.x) / this.scale) % this.crop.w;
         const cropY = Math.floor(Math.max(0, area.y - this.boundingBox.y) / this.scale) % this.crop.h;
         area = intersect(this.boundingBox, area);
-        if (area.w === 0 || area.h === 0) {
+        if (!area || area.w === 0 || area.h === 0) {
             return;
         }
         this.draw1(ctx, area, cropX, cropY);

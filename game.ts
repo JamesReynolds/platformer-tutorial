@@ -49,6 +49,13 @@ export class Game {
     // Make a player
     this.player = new Player(player);
 
+    // The ground
+    this.platforms.push(new GameObject({x: 0, y: this.canvas.height, w: this.canvas.width, h: 100}, shades));
+    // The left
+    this.platforms.push(new GameObject({x: -100, y: 0, w: 100, h: this.canvas.height}, shades));
+    // The right
+    this.platforms.push(new GameObject({x: this.canvas.width, y: 0, w: 100, h: this.canvas.height}, shades));
+    
     // Make some platforms
     for (let i = 0; i < 100; i++) {
       const platform = new GameObject(
