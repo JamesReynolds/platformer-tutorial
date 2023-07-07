@@ -1,6 +1,7 @@
 {
   "name": "typescript",
   "version": "0.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "tsc && mv dist/build.js dist/build.mjs && node dist/build.mjs",

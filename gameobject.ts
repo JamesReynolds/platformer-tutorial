@@ -1,4 +1,4 @@
-import { Rectangle, Vector } from './utils';
+import { Rectangle, Vector } from './utils.js';
 
 /**
  * Return the "intersection" (overlap) of two rectangles

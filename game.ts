@@ -3,9 +3,9 @@
  * and calling each part as part of the "game loop": the function `tick`
  * that is called every change.
  */
-import { GameObject } from './gameobject';
-import { Player } from './player';
-import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween } from './utils';
+import { GameObject } from './gameobject.js';
+import { Player } from './player.js';
+import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween } from './utils.js';
 
 export class Game {
   // The player!

@@ -3,8 +3,8 @@
  * needs to `move` and check whether they bump
  * into things.
  */
-import { GameObject, moveRectangle } from './gameobject';
-import { blockSize } from './utils';
+import { GameObject, moveRectangle } from './gameobject.js';
+import { blockSize } from './utils.js';
 
 export class Player extends GameObject {
   // How fast the player falls

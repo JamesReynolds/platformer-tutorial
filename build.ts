@@ -38,25 +38,10 @@ async function copyAssets(source: string, target: string, avoid: string[]) {
         if (avoid.filter(s => !path.relative(s, from).startsWith('..')).length > 0) {
             continue;
         }
+        await fs.mkdir(path.dirname(to), {recursive: true});
         if (types.filter(x => from.endsWith(x)).length > 0) {
             console.log(`Copying: ${from} -> ${to}`);
             await fs.copyFile(from, to);
-        }
-    }
-}
-
-/**
- * Fix up the import statements. A browser needs to search for "file.js" and not "file".
- * 
- * @param root The folder to search within
- */
-async function fixImports(root: string) {
-    for await (const from of paths(root)) {
-        if (from.endsWith('js')) {
-            console.log(`Fixing: ${from}`);
-            const data = await fs.readFile(from);
-            const fixed = data.toString().replace(/import\s+(.*)\sfrom\s+['"]\.(\S*)(.js)?['"];/g, "import $1 from '$2.js';");
-            await fs.writeFile(from, fixed);
         }
     }
 }
@@ -66,7 +51,6 @@ async function fixImports(root: string) {
  */
 async function main() {
     await copyAssets("./", "./dist/", ['node_modules']);
-    await fixImports("./dist");
 }
 
 main().then(_ => process.exit(0));

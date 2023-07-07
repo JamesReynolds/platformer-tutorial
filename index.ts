@@ -1,5 +1,5 @@
-import { Game } from './game';
-import { blockSize } from './utils';
+import { Game } from './game.js';
+import { blockSize } from './utils.js';
 
 const height = innerHeight - 150;
 const width = innerWidth - 5;
