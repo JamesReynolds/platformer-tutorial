@@ -1,6 +1,8 @@
 #!/bin/sh -eu
 
 cd "$(dirname "$0")"
+mkdir -p dist
+tsc
 python -m http.server --directory dist &
 PID1=$!
 tsc -w &

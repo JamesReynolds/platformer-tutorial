@@ -27,8 +27,8 @@ const keyDown = (evt) => {
   game.keyDown(evt.code);
 };
 
-function ticker(timeStamp) {
-    game.tick();
+async function ticker(timeStamp) {
+    await game.tick();
     window.requestAnimationFrame(ticker);
 }
 game.load().then(_ => {

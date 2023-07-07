@@ -1,35 +1,4 @@
-import { Rectangle, Vector } from './utils.js';
-
-/**
- * Return the "intersection" (overlap) of two rectangles
- * @param lhs The left hand rectangle
- * @param rhs The right hand rectangle
- * @returns A new rectangle of the overlap between the two
- */
-function intersect(lhs: Rectangle, rhs: Rectangle) {
-    const x = Math.max(lhs.x, rhs.x);
-    const y = Math.max(lhs.y, rhs.y);
-    const result = {x, y, 
-        w: Math.min(lhs.x + lhs.w, rhs.x + rhs.w) - x,
-        h: Math.min(lhs.y + lhs.h, rhs.y + rhs.h) - y
-    };
-    if (result.w < 0 || result.h < 0) {
-        return undefined;
-    }
-    return result;
-}
-
-/**
- * Move a bounding box by the given vector
- * @param box    The box to move
- * @param vector The vector to move it by
- * @returns The input box, shifted by the vector
- */
-export function moveRectangle(box: Rectangle, vector: Vector) {
-    box.x += vector.x;
-    box.y += vector.y;
-    return box;
-}
+import { Rectangle, intersect, labelledCorners, zoomCropImageToData, corners, vectorBetween, projectToLine } from './utils.js';
 
 /**
  * A game object is a "sprite" (picture)
@@ -37,13 +6,18 @@ export function moveRectangle(box: Rectangle, vector: Vector) {
  */
 export class GameObject {
     protected crop: Rectangle;
+    private pixels: ImageData;
     constructor(
         public boundingBox: Rectangle,
         private sprite: HTMLImageElement,
         crop?: Rectangle,
-        private scale = 1
+        private scale = 1,
+        context?: CanvasRenderingContext2D
     ) {
         this.crop = crop ? crop : {x: 0, y: 0, w: this.sprite.width, h: this.sprite.height};
+        if (context) {
+            zoomCropImageToData(context, sprite, this.crop, scale).then(x => this.pixels = x);
+        }
     }
 
     public centre() {
@@ -60,29 +34,73 @@ export class GameObject {
      * @param other The other gameobject we may have collided with
      * @param velocity The velocity we're moving at
      */
-    public checkCollision(other: GameObject, velocity: {x: number, y: number}) {
+    public checkCollision(other: GameObject, verbose: boolean) {
         // The bit we're now overlapping with the object
         const overlap = intersect(this.boundingBox, other.boundingBox);
         if (!overlap) {
             return undefined;
         }
-
-        // A vector that will move us so we're no longer overlapping (back the way we came)
-        const out = {
-            x: -Math.min(Math.abs(velocity.x), overlap.w) * Math.sign(velocity.x),
-            y: -Math.min(Math.abs(velocity.y), overlap.h) * Math.sign(velocity.y)};
-        
-        // The edge we bumped into
-        const edge = intersect(moveRectangle({...overlap}, out), this.boundingBox);
-
-        if (edge.h < edge.w) {
-            // If we hit a horizontal edge, then we don't need to exit left or right
-            out.x = 0;
-        } else {
-            // If we hit a vertical edge, then we don't need to exit up or down
-            out.y = 0;
+        if (verbose) {
+            console.log(`This: `, this.boundingBox);
+            console.log(`Other: `, other.boundingBox);
+            console.log(`Overlap: `, overlap);
         }
-        return out;
+        
+        // If we have some pixels, then check whether the overlap has any
+        if (this.pixels) {
+            const spritex = Math.floor(overlap.x - this.boundingBox.x);
+            const spritey = Math.floor(overlap.y - this.boundingBox.y);
+            let impact = false;
+            for(let x = spritex; !impact && x < spritex + overlap.w ; ++x) {
+                for(let y =  spritey ; !impact && y < spritey + overlap.h ; ++y) {
+                    const [r, g, b, a] = [...this.pixels.data.slice(y * this.pixels.width * 4 + x * 4), 0, 0, 0, 0];
+                    impact = impact || a !== 0;
+                }
+            }
+            if (!impact) {
+                return undefined;
+            }
+        }
+        const labelled = labelledCorners(overlap, other.boundingBox);
+        const inside = labelled.findIndex(x => x.label === "In");
+
+        // Problems:
+        //   1. Can walk through platforms touching the ground
+        //   2. Wall climbing on corners is a bit odd
+        //      ....Can I just make them smaller?
+        // Touching
+        if (inside === -1) {
+            if (verbose) {
+                console.log(`Touching: `, labelled);
+            }
+            if (overlap.h === 0) {
+                return {x: undefined, y: 0};
+            } else {
+                return {x: 0, y: undefined};
+            }
+        }
+        const [l, i, r] = [...labelled, ...labelled, ...labelled].slice(inside + 3, inside + 6);
+        if (verbose) {
+            console.log(l, i, r);
+        }
+        if (l.label === "In") {
+            if (verbose) {
+                console.log("Edge L");
+            }
+            return vectorBetween(i, r);
+        } else if (r.label === "In") {
+            if (verbose) {
+                console.log("Edge R");
+            }
+            return vectorBetween(i, l);
+        }
+        const tangent = {p0: l, p1: r};
+        const projection = projectToLine(tangent, i);
+        if (verbose) {
+            console.log("Tangent: ", tangent);
+            console.log("Projection: ", projection);
+        }
+        return vectorBetween(i, projection);
     }
 
     public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {

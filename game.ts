@@ -5,7 +5,7 @@
  */
 import { GameObject } from './gameobject.js';
 import { Player } from './player.js';
-import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween } from './utils.js';
+import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween, zoomCropImageToData } from './utils.js';
 
 export class Game {
   // The player!
@@ -46,18 +46,27 @@ export class Game {
     this.canvas.style.backgroundImage = `url('${background.src}')`;
     this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
 
+    // Clear previous data (if any)
+    this.context.clearRect(0, 0, this.canvas.height, this.canvas.width);
+    this.platforms.length = 0;
+    this.coins.length = 0;
+
     // Make a player
     this.player = new Player(player);
 
     // The ground
-    this.platforms.push(new GameObject({x: 0, y: this.canvas.height, w: this.canvas.width, h: 100}, shades));
+    console.log(`Ground: `, {x: 0, y: this.canvas.height, w: this.canvas.width, h: 100});
+    this.platforms.push(new GameObject({x: -100, y: this.canvas.height, w: this.canvas.width + 200, h: 100}, shades));
     // The left
-    this.platforms.push(new GameObject({x: -100, y: 0, w: 100, h: this.canvas.height}, shades));
+    this.platforms.push(new GameObject({x: -100, y: -100, w: 100, h: this.canvas.height + 200}, shades));
     // The right
-    this.platforms.push(new GameObject({x: this.canvas.width, y: 0, w: 100, h: this.canvas.height}, shades));
+    this.platforms.push(new GameObject({x: this.canvas.width, y: -100, w: 100, h: this.canvas.height + 200}, shades));
+
+    // Bump
+    this.platforms.push(new GameObject({x: 100, y: this.canvas.height - 30, w: 200, h: 30}, shades, randomShade(), 1/5));
     
     // Make some platforms
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 50; i++) {
       const platform = new GameObject(
         {
           x: randomBetween(0, this.canvas.width),
@@ -81,7 +90,7 @@ export class Game {
             w: blockSize,
             h: blockSize,
           },
-          coin, undefined, 1 / 5));
+          coin, undefined, 1 / 5, this.context));
     }
 
     // Make sure we start on the left
@@ -94,7 +103,11 @@ export class Game {
   /**
    * This is called each time the screen needs to update
    */
-  tick() {
+  async tick() {
+    // Special keys
+    if (this.keysHeld.has("KeyR")) {
+      await this.load();
+    }
     const dirty = [];
 
     // Mark where the player was as needing to be redrawn ("dirty")

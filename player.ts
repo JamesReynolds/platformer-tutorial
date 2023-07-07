@@ -3,8 +3,8 @@
  * needs to `move` and check whether they bump
  * into things.
  */
-import { GameObject, moveRectangle } from './gameobject.js';
-import { blockSize } from './utils.js';
+import { GameObject } from './gameobject.js';
+import { blockSize, moveRectangle } from './utils.js';
 
 export class Player extends GameObject {
   // How fast the player falls
@@ -78,19 +78,24 @@ export class Player extends GameObject {
       this.crop.x = ((this.crop.x / this.crop.w + 1) % 6) * this.crop.w;
     }
 
-    const collided = platforms.map(platform => platform.checkCollision(this, this.velocity)).filter(x => x).reverse();
+    const collided = platforms.map((platform, i) => this.checkCollision(platform, i > 2)).filter(x => x);
+
     this.onGround = false;
-    const bumpVector = {
-      x: collided.reduce((a, v) => a + v.x, 0),
-      y: collided.reduce((a, v) => a + v.y, 0),
+    const bumpVector = {x: 0, y: 0};
+    this.onGround = false;
+    for(const bump of collided) {
+      bumpVector.x += bump.x || 0;
+      bumpVector.y += bump.y || 0;
+      if (bump.y && (bump.y < 0 || (this.velocity.y === 0 && bump.y === 0))) {
+        this.onGround = true;
+      }
     }
     moveRectangle(this.boundingBox, bumpVector);
-    this.onGround = bumpVector.y < 0;
     if (bumpVector.y !== 0) {
-      this.velocity.y = 0;
+      this.velocity.y += bumpVector.y;
     }
     if (bumpVector.x !== 0) {
-      this.velocity.x = 0;
+      this.velocity.x += bumpVector.x;
     }
     
     if (this.onGround) {
@@ -101,14 +106,6 @@ export class Player extends GameObject {
   }
 
   checkCoin(coin: GameObject) {
-    const coinCentre = coin.centre();
-    const thisCentre = this.centre();
-
-    return (
-      coinCentre.x - 15 < thisCentre.x &&
-      thisCentre.x < coinCentre.x + 15 &&
-      coinCentre.y - 15 < thisCentre.y &&
-      thisCentre.y < coinCentre.y + 15
-    );
+    return this.checkCollision(coin, false) !== undefined;
   }
 }

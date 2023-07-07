@@ -3,6 +3,8 @@
     "moduleResolution": "nodenext",
     "module": "esnext",
     "target": "esnext",
-    "outDir": "dist"
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "sourceMap": true
   }
 }

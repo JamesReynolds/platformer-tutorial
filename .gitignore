@@ -3,3 +3,4 @@ img/*.js
 package-lock.json
 node_modules
 dist
+*.js.map
