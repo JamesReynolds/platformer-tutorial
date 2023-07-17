@@ -70,11 +70,14 @@ export function labelledCorners(lhs: Rectangle, rhs: Rectangle) {
 
 export function projectToLine(line: Line, point: Point)
 {
-    const dx = line.p1.x - line.p0.x;
-    const dy = line.p1.y - line.p0.y;
-    const x = (dx * dy * (point.y - line.p0.y) + dx * dx * point.x + dy * dy * line.p0.x) / (dx * dx + dy * dy);
-    const y = (dy * point.y + dx * (point.x - x)) / dy;
-    return {x, y};
+  const dx = line.p1.x - line.p0.x;
+  const dy = line.p1.y - line.p0.y;
+  if (dx === 0 || dy === 0) {
+    return {x: dx === 0 ? line.p1.x : point.x, y: dy === 0 ? line.p1.y : point.y};
+  } 
+  const x = (dx * dy * (point.y - line.p0.y) + dx * dx * point.x + dy * dy * line.p0.x) / (dx * dx + dy * dy);
+  const y = (dy * point.y + dx * (point.x - x)) / dy;
+  return {x, y};
 }
 
 const ROOT =

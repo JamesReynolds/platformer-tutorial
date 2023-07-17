@@ -1,4 +1,11 @@
-import { Rectangle, intersect, labelledCorners, zoomCropImageToData, corners, vectorBetween, projectToLine } from './utils.js';
+import { Rectangle, intersect, zoomCropImageToData, projectToLine, Line, corners } from './utils.js';
+
+export function floorBox(rect: Rectangle) {
+    rect.x = Math.floor(rect.x);
+    rect.y = Math.floor(rect.y);
+    rect.w = Math.floor(rect.w);
+    rect.h = Math.floor(rect.h);
+}
 
 /**
  * A game object is a "sprite" (picture)
@@ -34,73 +41,90 @@ export class GameObject {
      * @param other The other gameobject we may have collided with
      * @param velocity The velocity we're moving at
      */
-    public checkCollision(other: GameObject, verbose: boolean) {
+    public checkCollision(other: GameObject, target: Rectangle, canvas?: CanvasRenderingContext2D) {
         // The bit we're now overlapping with the object
-        const overlap = intersect(this.boundingBox, other.boundingBox);
+        const overlap = intersect(other.boundingBox, target);
         if (!overlap) {
             return undefined;
         }
-        if (verbose) {
-            console.log(`This: `, this.boundingBox);
-            console.log(`Other: `, other.boundingBox);
-            console.log(`Overlap: `, overlap);
-        }
-        
+        floorBox(overlap);
+
         // If we have some pixels, then check whether the overlap has any
-        if (this.pixels) {
-            const spritex = Math.floor(overlap.x - this.boundingBox.x);
-            const spritey = Math.floor(overlap.y - this.boundingBox.y);
-            let impact = false;
-            for(let x = spritex; !impact && x < spritex + overlap.w ; ++x) {
-                for(let y =  spritey ; !impact && y < spritey + overlap.h ; ++y) {
-                    const [r, g, b, a] = [...this.pixels.data.slice(y * this.pixels.width * 4 + x * 4), 0, 0, 0, 0];
-                    impact = impact || a !== 0;
+        if (other.pixels) {
+            overlap.x = Math.floor(overlap.x - other.boundingBox.x);
+            overlap.y = Math.floor(overlap.y - other.boundingBox.y);
+            for(; overlap.w > 0; (++overlap.x, --overlap.w)) {
+                let impact = false;
+                for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
+                    const alpha = other.pixels.data[y * other.pixels.width * 4 + overlap.x * 4 + 3];
+                    impact = impact || alpha > 20;
                 }
+                if (impact) break;
             }
-            if (!impact) {
+            for(; overlap.w > 0 ; --overlap.w) {
+                let impact = false;
+                for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
+                    const alpha = other.pixels.data[y * other.pixels.width * 4 + (overlap.x + overlap.w) * 4 + 3];
+                    impact = impact || alpha > 20;
+                }
+                if (impact) break;
+            }
+            for(; overlap.h > 0 ; (++overlap.y, --overlap.h)) {
+                let impact = false;
+                for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
+                    const alpha = other.pixels.data[overlap.y * other.pixels.width * 4 + x * 4 + 3];
+                    impact = impact || alpha > 20;
+                }
+                if (impact) break;
+            }
+            for(; overlap.h > 0 ; --overlap.h) {
+                let impact = false;
+                for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
+                    const alpha = other.pixels.data[(overlap.y + overlap.h) * other.pixels.width * 4 + x * 4 + 3];
+                    impact = impact || alpha > 20;
+                }
+                if (impact) break;
+            }
+            if (overlap.w === 0 && overlap.h === 0) {
                 return undefined;
             }
+            overlap.x += other.boundingBox.x;
+            overlap.y += other.boundingBox.y;
         }
-        const labelled = labelledCorners(overlap, other.boundingBox);
-        const inside = labelled.findIndex(x => x.label === "In");
 
-        // Problems:
-        //   1. Can walk through platforms touching the ground
-        //   2. Wall climbing on corners is a bit odd
-        //      ....Can I just make them smaller?
-        // Touching
-        if (inside === -1) {
-            if (verbose) {
-                console.log(`Touching: `, labelled);
-            }
-            if (overlap.h === 0) {
-                return {x: undefined, y: 0};
-            } else {
-                return {x: 0, y: undefined};
-            }
+        if (overlap.h === 0) {
+            return {x: undefined, y: 0};
+        } else if (overlap.w === 0) {
+            return {y: undefined, x: 0};
         }
-        const [l, i, r] = [...labelled, ...labelled, ...labelled].slice(inside + 3, inside + 6);
-        if (verbose) {
-            console.log(l, i, r);
+        
+        const dx = target.x - this.boundingBox.x;
+        const dy = target.y - this.boundingBox.y;
+
+        // TODO:
+        // 1. Squeezing through small gaps
+        // 2. Cleanup & comment
+        const centre = {x: overlap.x + overlap.w / 2, y: overlap.y + overlap.h / 2};
+        const myCentre = {x: target.x + target.w / 2, y: target.y + target.h / 2};
+        const x = myCentre.x - centre.x;
+        const y = myCentre.y - centre.y;
+        if (x === 0) {
+            return {x: undefined, y: dy > 0 ? -overlap.h : overlap.h };
+        } else if (y === 0) {
+            return {x: dx > 0 ? -overlap.w : overlap.w, y: undefined};
         }
-        if (l.label === "In") {
-            if (verbose) {
-                console.log("Edge L");
-            }
-            return vectorBetween(i, r);
-        } else if (r.label === "In") {
-            if (verbose) {
-                console.log("Edge R");
-            }
-            return vectorBetween(i, l);
+        const we = Math.sign(x) * overlap.w;
+        const he = Math.sign(y) * overlap.h;
+        const hp = we / x * y;
+        const wp = he / y * x;
+
+        if (wp * wp + overlap.h * overlap.h < overlap.w * overlap.w + hp * hp) {
+            // console.log("horizontal", centre, myCentre, dx.toFixed(2), dy.toFixed(2), wp, hp, overlap);
+            return {x: wp, y: he};
+        } else {
+            // console.log("vertical", centre, myCentre, dx.toFixed(2), dy.toFixed(2), wp, hp, overlap);
+            return {x: we, y: hp};
         }
-        const tangent = {p0: l, p1: r};
-        const projection = projectToLine(tangent, i);
-        if (verbose) {
-            console.log("Tangent: ", tangent);
-            console.log("Projection: ", projection);
-        }
-        return vectorBetween(i, projection);
     }
 
     public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {

@@ -31,8 +31,22 @@ async function ticker(timeStamp) {
     await game.tick();
     window.requestAnimationFrame(ticker);
 }
+
+let move = false;
 game.load().then(_ => {
     window.requestAnimationFrame(ticker);
     document.addEventListener('keydown', keyDown);
     document.addEventListener('keyup', keyUp);
+    document.addEventListener('mousedown', (evt) => {
+      game.keyDown("mouse");
+    });
+    document.addEventListener('mouseup', (evt) => {
+      game.keyUp("mouse");
+    });
+    document.addEventListener('mousemove', (evt) => {
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = evt.clientX - canvasRect.left;
+      const y = evt.clientY - canvasRect.top;
+      game.move({x, y});
+    });
 });

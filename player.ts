@@ -3,8 +3,8 @@
  * needs to `move` and check whether they bump
  * into things.
  */
-import { GameObject } from './gameobject.js';
-import { blockSize, moveRectangle } from './utils.js';
+import { GameObject, floorBox } from './gameobject.js';
+import { Point, blockSize, moveRectangle } from './utils.js';
 
 export class Player extends GameObject {
   // How fast the player falls
@@ -34,13 +34,14 @@ export class Player extends GameObject {
   /**
    * Make the player move
    * @param keysHeld The keys being pressed
-   * @param canvas The canvas that the player is on
+   * @param context The canvas that the player is on
    * @param platforms The platforms the player can stand on
    */
   move(
     keysHeld: Set<string>,
-    canvas: HTMLCanvasElement,
-    platforms: GameObject[]
+    context: CanvasRenderingContext2D,
+    platforms: GameObject[],
+    point?: Point
   ) {
     if (keysHeld.has("ArrowLeft")) {
       this.velocity.x -= 2;
@@ -70,34 +71,40 @@ export class Player extends GameObject {
     }
 
     // Move the player
-    this.boundingBox.x += this.velocity.x;
-    this.boundingBox.y += this.velocity.y;
-
+    const target = {...this.boundingBox};
+    if (!keysHeld.has("mouse")) {
+      moveRectangle(target, this.velocity);
+    } else if (point) {
+      this.velocity.x = 0;
+      this.velocity.y = 0;
+      target.x = point.x;
+      target.y = point.y;
+    }
+    
     // Make the player step
     if (this.velocity.x !== 0) {
       this.crop.x = ((this.crop.x / this.crop.w + 1) % 6) * this.crop.w;
     }
 
-    const collided = platforms.map((platform, i) => this.checkCollision(platform, i > 2)).filter(x => x);
-
+    // Check collision and adjust target appropriately
     this.onGround = false;
-    const bumpVector = {x: 0, y: 0};
-    this.onGround = false;
-    for(const bump of collided) {
-      bumpVector.x += bump.x || 0;
-      bumpVector.y += bump.y || 0;
-      if (bump.y && (bump.y < 0 || (this.velocity.y === 0 && bump.y === 0))) {
-        this.onGround = true;
+    for(const platform of platforms) {
+      floorBox(target);
+      const vector = this.checkCollision(platform, target, context);
+      if (vector) {
+        target.x += vector.x || 0;
+        target.y += vector.y || 0;
+        this.onGround = this.onGround || vector.y && vector.y <= 0;
+        if (vector.x && Math.sign(vector.x) !== Math.sign(this.velocity.x) && vector.x !== 0) {
+          this.velocity.x = 0;
+        }
+        if (vector.y && Math.sign(vector.y) !== Math.sign(this.velocity.y) && vector.y !== 0) {
+          this.velocity.y = 0;
+        }
       }
     }
-    moveRectangle(this.boundingBox, bumpVector);
-    if (bumpVector.y !== 0) {
-      this.velocity.y += bumpVector.y;
-    }
-    if (bumpVector.x !== 0) {
-      this.velocity.x += bumpVector.x;
-    }
-    
+    this.boundingBox = target;
+
     if (this.onGround) {
       this.velocity.x *= 0.8;
     } else {
@@ -106,6 +113,6 @@ export class Player extends GameObject {
   }
 
   checkCoin(coin: GameObject) {
-    return this.checkCollision(coin, false) !== undefined;
+    return this.checkCollision(coin, this.boundingBox) !== undefined;
   }
 }

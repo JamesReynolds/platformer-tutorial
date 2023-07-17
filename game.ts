@@ -5,7 +5,7 @@
  */
 import { GameObject } from './gameobject.js';
 import { Player } from './player.js';
-import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween, zoomCropImageToData } from './utils.js';
+import { blockSize, loadImageLocal, randomShade, Rectangle, randomBetween, zoomCropImageToData, Point } from './utils.js';
 
 export class Game {
   // The player!
@@ -22,6 +22,9 @@ export class Game {
 
   // The thing we need to draw with
   private context: CanvasRenderingContext2D;
+
+  // List of things to redraw
+  private dirty: Rectangle[] = [];
   
   constructor(
     // The frame looking into onto our canvas
@@ -30,6 +33,24 @@ export class Game {
     public canvas: HTMLCanvasElement,
   ) {
     this.context = this.canvas.getContext('2d');
+  }
+
+  public move(position?: Point) {
+    if (position && !this.keysHeld.has("mouse")) {
+      return;
+    }
+    // Mark where the player was as needing to be redrawn ("dirty")
+    this.dirty.push({...this.player.boundingBox});
+    
+    // The player moves
+    this.player.move(this.keysHeld, this.context, this.platforms, position);
+
+    // Redraw where we moved to
+    this.dirty.push({...this.player.boundingBox});
+
+    // Make sure the player is in the middle of the screen
+    const displayX = this.player.centre().x - this.wrapper.clientWidth / 2;
+    this.wrapper.scrollTo(displayX, 0);
   }
 
   /**
@@ -41,11 +62,13 @@ export class Game {
     const coin = await loadImageLocal('img/coin.png');
     const player = await loadImageLocal('img/player.png');
     const background = await loadImageLocal('img/background.jpg');
-
+    
     // Set the background
+    this.canvas.height = background.height;
+    this.canvas.width = background.width;
     this.canvas.style.backgroundImage = `url('${background.src}')`;
-    this.canvas.style.backgroundRepeat = 'repeat-x repeat-y';
-
+    this.canvas.style.backgroundSize = '1000x400';
+    
     // Clear previous data (if any)
     this.context.clearRect(0, 0, this.canvas.height, this.canvas.width);
     this.platforms.length = 0;
@@ -55,18 +78,20 @@ export class Game {
     this.player = new Player(player);
 
     // The ground
-    console.log(`Ground: `, {x: 0, y: this.canvas.height, w: this.canvas.width, h: 100});
     this.platforms.push(new GameObject({x: -100, y: this.canvas.height, w: this.canvas.width + 200, h: 100}, shades));
     // The left
     this.platforms.push(new GameObject({x: -100, y: -100, w: 100, h: this.canvas.height + 200}, shades));
     // The right
     this.platforms.push(new GameObject({x: this.canvas.width, y: -100, w: 100, h: this.canvas.height + 200}, shades));
 
-    // Bump
-    this.platforms.push(new GameObject({x: 100, y: this.canvas.height - 30, w: 200, h: 30}, shades, randomShade(), 1/5));
+    // Cliff on left
+    const cliff = await loadImageLocal('img/cliff.png');
+    this.platforms.push(new GameObject(
+      {x: 0, y: this.canvas.height - cliff.height, w: cliff.width, h: cliff.height},
+      cliff, undefined, 1, this.context));
     
     // Make some platforms
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 10; i++) {
       const platform = new GameObject(
         {
           x: randomBetween(0, this.canvas.width),
@@ -81,7 +106,7 @@ export class Game {
     }
 
     // Make some coins
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 5; i++) {
       this.coins.push(
         new GameObject(
           {
@@ -108,30 +133,23 @@ export class Game {
     if (this.keysHeld.has("KeyR")) {
       await this.load();
     }
-    const dirty = [];
 
-    // Mark where the player was as needing to be redrawn ("dirty")
-    dirty.push({...this.player.boundingBox});
-    
-    // The player moves
-    this.player.move(this.keysHeld, this.canvas, this.platforms);
-    
-    // Make sure the player is in the middle of the screen
-    const displayX = this.player.centre().x - this.wrapper.clientWidth / 2;
-    this.wrapper.scrollTo(displayX, 0);
+    // Move the player
+    this.move();
 
     // Check whether the player gets a coin
     for (let i = 0; i < this.coins.length; i++) {
       if (this.player.checkCoin(this.coins[i])) {
         // Where the coin used to be needs to be redrawn
-        dirty.push(this.coins[i].boundingBox);
+        this.dirty.push(this.coins[i].boundingBox);
 
         // Remove the coin
         this.coins.splice(i, 1);
       }
     }
 
-    this.draw(dirty);
+    this.draw(this.dirty);
+    this.dirty = [];
   }
 
   /**
