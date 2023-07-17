@@ -80,33 +80,52 @@ export class Player extends GameObject {
       target.x = point.x;
       target.y = point.y;
     }
+    floorBox(target);
     
     // Make the player step
     if (this.velocity.x !== 0) {
       this.crop.x = ((this.crop.x / this.crop.w + 1) % 6) * this.crop.w;
     }
+    
+    // Find all platforms near us
+    const near = platforms.filter(platform => platform.findOverlap(unionOverlap(this.boundingBox, target)) !== undefined);
 
-    // Check collision and adjust target appropriately
-    this.onGround = false;
+    // Find out the area we are overlapping
     let overlap = undefined;
-    floorBox(target);
-    for(const platform of platforms) {
+    for(const platform of near) {
       overlap = unionOverlap(overlap, platform.findOverlap(target));
     }
-    const vector = this.checkCollision(overlap, target, context);
+
+    // Get a vector that should push us out of the collision
+    let vector = this.checkCollision(overlap, target);
+    this.onGround = vector && vector.y && vector.y <= 0;
     if (vector) {
-      target.x += vector.x || 0;
-      target.y += vector.y || 0;
-      this.onGround = this.onGround || vector.y && vector.y <= 0;
+      // Move us out of the collision
+      moveRectangle(target, vector);
+
+      // Stop moving if we hit something going left/right
       if (vector.x && Math.sign(vector.x) !== Math.sign(this.velocity.x) && vector.x !== 0) {
         this.velocity.x = 0;
       }
+
+      // Stop moving if we hit something going up/down
       if (vector.y && Math.sign(vector.y) !== Math.sign(this.velocity.y) && vector.y !== 0) {
         this.velocity.y = 0;
       }
-    }
-    this.boundingBox = target;
 
+      // Check if we're actually still hitting something...
+      overlap = undefined;
+      for(const platform of near) {
+        overlap = unionOverlap(overlap, platform.findOverlap(target));
+      }
+    }
+
+    // If we're no longer hitting anything then move
+    if (!overlap || overlap.w <= 1 || overlap.h <= 1) {
+      this.boundingBox = target;
+    }
+
+    // Adjust our speed according to whether we're on the ground
     if (this.onGround) {
       this.velocity.x *= 0.8;
     } else {

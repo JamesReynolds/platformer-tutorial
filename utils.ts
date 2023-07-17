@@ -1,6 +1,6 @@
 export const blockSize = 60;
 export type Rectangle = { x: number; y: number; w: number; h: number };
-export type Vector = { x: number; y: number };
+export type Vector = { x: number | undefined; y: number | undefined };
 export type Point = { x: number, y: number };
 export type Line = { p0: Point, p1: Point };
 
@@ -33,8 +33,8 @@ export function intersect(lhs: Rectangle, rhs: Rectangle) {
 * @returns The input box, shifted by the vector
 */
 export function moveRectangle(box: Rectangle, vector: Vector) {
-  box.x += vector.x;
-  box.y += vector.y;
+  box.x += vector.x || 0;
+  box.y += vector.y || 0;
   return box;
 }
 

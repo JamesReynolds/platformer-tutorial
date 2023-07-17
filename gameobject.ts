@@ -53,7 +53,7 @@ export class GameObject {
             let impact = false;
             for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
                 const alpha = this.pixels.data[y * this.pixels.width * 4 + overlap.x * 4 + 3];
-                impact = impact || alpha > 20;
+                impact = impact || alpha > 100;
             }
             if (impact) break;
         }
@@ -61,7 +61,7 @@ export class GameObject {
             let impact = false;
             for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
                 const alpha = this.pixels.data[y * this.pixels.width * 4 + (overlap.x + overlap.w) * 4 + 3];
-                impact = impact || alpha > 20;
+                impact = impact || alpha > 100;
             }
             if (impact) break;
         }
@@ -69,7 +69,7 @@ export class GameObject {
             let impact = false;
             for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
                 const alpha = this.pixels.data[overlap.y * this.pixels.width * 4 + x * 4 + 3];
-                impact = impact || alpha > 20;
+                impact = impact || alpha > 100;
             }
             if (impact) break;
         }
@@ -77,7 +77,7 @@ export class GameObject {
             let impact = false;
             for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
                 const alpha = this.pixels.data[(overlap.y + overlap.h) * this.pixels.width * 4 + x * 4 + 3];
-                impact = impact || alpha > 20;
+                impact = impact || alpha > 100;
             }
             if (impact) break;
         }
@@ -96,51 +96,26 @@ export class GameObject {
      * @param other The other gameobject we may have collided with
      * @param velocity The velocity we're moving at
      */
-    public checkCollision(overlap: Rectangle, target: Rectangle, canvas?: CanvasRenderingContext2D) {
+    public checkCollision(overlap: Rectangle, target: Rectangle) {
         if (!overlap) {
             return undefined;
-        } else if (overlap.h === 0) {
-            return {x: undefined, y: 0};
-        } else if (overlap.w === 0) {
-            return {y: undefined, x: 0};
         }
-        
+
         const dx = target.x - this.boundingBox.x;
         const dy = target.y - this.boundingBox.y;
 
-        const centre = {x: overlap.x + overlap.w / 2, y: overlap.y + overlap.h / 2};
-        const myCentre = {x: target.x + target.w / 2, y: target.y + target.h / 2};
-        const x = myCentre.x - centre.x;
-        const y = myCentre.y - centre.y;
-        
-        // TODO:
-        // 1. Draw the different problem types:
-        //    Flat ground
-        //    Rectangular corner
-        //    Small step
-        //    Small knee-high gap
-        // 2. Figure them out
-        if (x === 0) {
-            return {x: -dx, y: -Math.sign(dy) * Math.min(Math.abs(dy), overlap.h) };
-        } else if (y === 0) {
-            return {x: -Math.sign(dx) * Math.min(Math.abs(dx), overlap.w), y: -dy};
+        // Running on the ground or up small steps
+        if (overlap.h <= 2 || overlap.h <= 30 && overlap.w > 5) {
+            return {x: undefined, y: -Math.sign(dy) * overlap.h};
         }
-        const we = Math.sign(x) * overlap.w;
-        const he = Math.sign(y) * overlap.h;
-        const hp = we / x * y;
-        const wp = he / y * x;
 
-        if (wp * wp + overlap.h * overlap.h < overlap.w * overlap.w + hp * hp) {
-            if (wp * wp + he * he > x * x + y * y) {
-                return {x: -dx, y: -dy};
-            }
-            return {x: wp, y: he};
-        } else {
-            if (we * we + hp * hp > x * x + y * y) {
-                return {x: -dx, y: -dy};
-            }
-            return {x: we, y: hp};
+        // Sliding down the side of something
+        if (overlap.w <= 2 || overlap.w <= 30 && overlap.h > 5) {
+            return {y: undefined, x: -Math.sign(dx) * overlap.w};
         }
+
+        // Just go back the way we came
+        return {x: -dx, y: -dy};
     }   
 
     public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {
