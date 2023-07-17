@@ -34,6 +34,61 @@ export class GameObject {
         };
     }
 
+    public findOverlap(target: Rectangle) {
+        // The bit that overlaps with the target
+        const overlap = intersect(this.boundingBox, target);
+        if (!overlap) {
+            return undefined;
+        }
+        floorBox(overlap);
+
+        // If we have some pixels, then check whether the overlap has any
+        if (!this.pixels) {
+            return overlap;
+        }
+
+        overlap.x = Math.floor(overlap.x - this.boundingBox.x);
+        overlap.y = Math.floor(overlap.y - this.boundingBox.y);
+        for(; overlap.w > 0; (++overlap.x, --overlap.w)) {
+            let impact = false;
+            for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
+                const alpha = this.pixels.data[y * this.pixels.width * 4 + overlap.x * 4 + 3];
+                impact = impact || alpha > 20;
+            }
+            if (impact) break;
+        }
+        for(; overlap.w > 0 ; --overlap.w) {
+            let impact = false;
+            for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
+                const alpha = this.pixels.data[y * this.pixels.width * 4 + (overlap.x + overlap.w) * 4 + 3];
+                impact = impact || alpha > 20;
+            }
+            if (impact) break;
+        }
+        for(; overlap.h > 0 ; (++overlap.y, --overlap.h)) {
+            let impact = false;
+            for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
+                const alpha = this.pixels.data[overlap.y * this.pixels.width * 4 + x * 4 + 3];
+                impact = impact || alpha > 20;
+            }
+            if (impact) break;
+        }
+        for(; overlap.h > 0 ; --overlap.h) {
+            let impact = false;
+            for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
+                const alpha = this.pixels.data[(overlap.y + overlap.h) * this.pixels.width * 4 + x * 4 + 3];
+                impact = impact || alpha > 20;
+            }
+            if (impact) break;
+        }
+        if (overlap.w === 0 && overlap.h === 0) {
+            return undefined;
+        }
+        overlap.x += this.boundingBox.x;
+        overlap.y += this.boundingBox.y;
+        return overlap;
+    }
+
     /**
      * Figure out whether we collided with another object and return
      * opposite velocity to get us back outside the object if we did.
@@ -41,58 +96,10 @@ export class GameObject {
      * @param other The other gameobject we may have collided with
      * @param velocity The velocity we're moving at
      */
-    public checkCollision(other: GameObject, target: Rectangle, canvas?: CanvasRenderingContext2D) {
-        // The bit we're now overlapping with the object
-        const overlap = intersect(other.boundingBox, target);
+    public checkCollision(overlap: Rectangle, target: Rectangle, canvas?: CanvasRenderingContext2D) {
         if (!overlap) {
             return undefined;
-        }
-        floorBox(overlap);
-
-        // If we have some pixels, then check whether the overlap has any
-        if (other.pixels) {
-            overlap.x = Math.floor(overlap.x - other.boundingBox.x);
-            overlap.y = Math.floor(overlap.y - other.boundingBox.y);
-            for(; overlap.w > 0; (++overlap.x, --overlap.w)) {
-                let impact = false;
-                for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
-                    const alpha = other.pixels.data[y * other.pixels.width * 4 + overlap.x * 4 + 3];
-                    impact = impact || alpha > 20;
-                }
-                if (impact) break;
-            }
-            for(; overlap.w > 0 ; --overlap.w) {
-                let impact = false;
-                for(let y =  overlap.y ; !impact && y < overlap.y + overlap.h ; ++y) {
-                    const alpha = other.pixels.data[y * other.pixels.width * 4 + (overlap.x + overlap.w) * 4 + 3];
-                    impact = impact || alpha > 20;
-                }
-                if (impact) break;
-            }
-            for(; overlap.h > 0 ; (++overlap.y, --overlap.h)) {
-                let impact = false;
-                for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
-                    const alpha = other.pixels.data[overlap.y * other.pixels.width * 4 + x * 4 + 3];
-                    impact = impact || alpha > 20;
-                }
-                if (impact) break;
-            }
-            for(; overlap.h > 0 ; --overlap.h) {
-                let impact = false;
-                for(let x =  overlap.x ; !impact && x < overlap.x + overlap.h ; ++x) {
-                    const alpha = other.pixels.data[(overlap.y + overlap.h) * other.pixels.width * 4 + x * 4 + 3];
-                    impact = impact || alpha > 20;
-                }
-                if (impact) break;
-            }
-            if (overlap.w === 0 && overlap.h === 0) {
-                return undefined;
-            }
-            overlap.x += other.boundingBox.x;
-            overlap.y += other.boundingBox.y;
-        }
-
-        if (overlap.h === 0) {
+        } else if (overlap.h === 0) {
             return {x: undefined, y: 0};
         } else if (overlap.w === 0) {
             return {y: undefined, x: 0};
@@ -101,17 +108,22 @@ export class GameObject {
         const dx = target.x - this.boundingBox.x;
         const dy = target.y - this.boundingBox.y;
 
-        // TODO:
-        // 1. Squeezing through small gaps
-        // 2. Cleanup & comment
         const centre = {x: overlap.x + overlap.w / 2, y: overlap.y + overlap.h / 2};
         const myCentre = {x: target.x + target.w / 2, y: target.y + target.h / 2};
         const x = myCentre.x - centre.x;
         const y = myCentre.y - centre.y;
+        
+        // TODO:
+        // 1. Draw the different problem types:
+        //    Flat ground
+        //    Rectangular corner
+        //    Small step
+        //    Small knee-high gap
+        // 2. Figure them out
         if (x === 0) {
-            return {x: undefined, y: dy > 0 ? -overlap.h : overlap.h };
+            return {x: -dx, y: -Math.sign(dy) * Math.min(Math.abs(dy), overlap.h) };
         } else if (y === 0) {
-            return {x: dx > 0 ? -overlap.w : overlap.w, y: undefined};
+            return {x: -Math.sign(dx) * Math.min(Math.abs(dx), overlap.w), y: -dy};
         }
         const we = Math.sign(x) * overlap.w;
         const he = Math.sign(y) * overlap.h;
@@ -119,13 +131,17 @@ export class GameObject {
         const wp = he / y * x;
 
         if (wp * wp + overlap.h * overlap.h < overlap.w * overlap.w + hp * hp) {
-            // console.log("horizontal", centre, myCentre, dx.toFixed(2), dy.toFixed(2), wp, hp, overlap);
+            if (wp * wp + he * he > x * x + y * y) {
+                return {x: -dx, y: -dy};
+            }
             return {x: wp, y: he};
         } else {
-            // console.log("vertical", centre, myCentre, dx.toFixed(2), dy.toFixed(2), wp, hp, overlap);
+            if (we * we + hp * hp > x * x + y * y) {
+                return {x: -dx, y: -dy};
+            }
             return {x: we, y: hp};
         }
-    }
+    }   
 
     public draw(ctx: CanvasRenderingContext2D, area?: Rectangle) {
         if (!area) {

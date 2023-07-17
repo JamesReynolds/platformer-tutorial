@@ -4,7 +4,7 @@
  * into things.
  */
 import { GameObject, floorBox } from './gameobject.js';
-import { Point, blockSize, moveRectangle } from './utils.js';
+import { Point, blockSize, moveRectangle, unionOverlap } from './utils.js';
 
 export class Player extends GameObject {
   // How fast the player falls
@@ -88,19 +88,21 @@ export class Player extends GameObject {
 
     // Check collision and adjust target appropriately
     this.onGround = false;
+    let overlap = undefined;
+    floorBox(target);
     for(const platform of platforms) {
-      floorBox(target);
-      const vector = this.checkCollision(platform, target, context);
-      if (vector) {
-        target.x += vector.x || 0;
-        target.y += vector.y || 0;
-        this.onGround = this.onGround || vector.y && vector.y <= 0;
-        if (vector.x && Math.sign(vector.x) !== Math.sign(this.velocity.x) && vector.x !== 0) {
-          this.velocity.x = 0;
-        }
-        if (vector.y && Math.sign(vector.y) !== Math.sign(this.velocity.y) && vector.y !== 0) {
-          this.velocity.y = 0;
-        }
+      overlap = unionOverlap(overlap, platform.findOverlap(target));
+    }
+    const vector = this.checkCollision(overlap, target, context);
+    if (vector) {
+      target.x += vector.x || 0;
+      target.y += vector.y || 0;
+      this.onGround = this.onGround || vector.y && vector.y <= 0;
+      if (vector.x && Math.sign(vector.x) !== Math.sign(this.velocity.x) && vector.x !== 0) {
+        this.velocity.x = 0;
+      }
+      if (vector.y && Math.sign(vector.y) !== Math.sign(this.velocity.y) && vector.y !== 0) {
+        this.velocity.y = 0;
       }
     }
     this.boundingBox = target;
@@ -113,6 +115,6 @@ export class Player extends GameObject {
   }
 
   checkCoin(coin: GameObject) {
-    return this.checkCollision(coin, this.boundingBox) !== undefined;
+    return coin.findOverlap(this.boundingBox) !== undefined;
   }
 }

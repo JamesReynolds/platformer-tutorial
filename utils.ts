@@ -38,6 +38,18 @@ export function moveRectangle(box: Rectangle, vector: Vector) {
   return box;
 }
 
+export function unionOverlap(lhs: Rectangle | undefined, rhs: Rectangle | undefined) {
+  if (!lhs || !rhs) {
+    return lhs ? lhs : rhs;
+  }
+  return {
+    x: Math.min(lhs.x, rhs.x),
+    y: Math.min(lhs.y, rhs.y),
+    w: Math.max(lhs.x + lhs.w, rhs.x + rhs.w) - Math.min(lhs.x, rhs.x),
+    h: Math.max(lhs.y + lhs.h, rhs.y + rhs.h) - Math.min(lhs.y, rhs.y),
+  }
+}
+
 export type CornerLabel = "Out" | "In" | "Edge";
 
 export function vectorBetween(p0: Point, p1: Point) {
